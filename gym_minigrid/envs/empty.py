@@ -9,17 +9,20 @@ class EmptyEnv(MiniGridEnv):
     def __init__(
         self,
         size=8,
-        agent_start_pos=(1,1),
-        agent_start_dir=0,
+        agent_start_pos=[(1,1),(4,4)],
+        agent_start_dir=[0,1],
+        agent_num = 2
     ):
         self.agent_start_pos = agent_start_pos
         self.agent_start_dir = agent_start_dir
+        self.agent_num = agent_num
 
         super().__init__(
             grid_size=size,
             max_steps=4*size*size,
             # Set this to True for maximum speed
-            see_through_walls=True
+            see_through_walls=False,
+            agent_num=self.agent_num
         )
 
     def _gen_grid(self, width, height):
@@ -33,7 +36,14 @@ class EmptyEnv(MiniGridEnv):
         self.put_obj(Goal(), width - 2, height - 2)
 
         # Place the agent
+        '''
         if self.agent_start_pos is not None:
+            self.agent_pos = self.agent_start_pos
+            self.agent_dir = self.agent_start_dir
+        else:
+            self.place_agent()
+        '''
+        if len(self.agent_start_pos):
             self.agent_pos = self.agent_start_pos
             self.agent_dir = self.agent_start_dir
         else:

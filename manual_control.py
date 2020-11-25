@@ -19,7 +19,10 @@ def reset():
         env.seed(args.seed)
 
     obs = env.reset()
-
+    obs, reward, done, info = env.step([0,1])
+    env.render_multi_agent()
+    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     if hasattr(env, 'mission'):
         print('Mission: %s' % env.mission)
         window.set_caption(env.mission)
@@ -96,10 +99,16 @@ parser.add_argument(
     help="draw the agent sees (partially observable view)",
     action='store_true'
 )
+parser.add_argument(
+    '--agent_num',
+    type=int,
+    help="number of agents",
+    default=2
+)
 
 args = parser.parse_args()
 
-env = gym.make(args.env)
+env = gym.make(args.env, agent_pos=[(2,1),(4,4)])
 
 if args.agent_view:
     env = RGBImgPartialObsWrapper(env)
