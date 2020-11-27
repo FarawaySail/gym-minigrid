@@ -5,6 +5,7 @@ from gym_minigrid.minigrid import *
 from gym_minigrid.register import register
 import matplotlib.pyplot as plt
 import time
+import pyastar
 
 
 class MultiExplorationEnv(MiniGridEnv):
@@ -71,14 +72,14 @@ class MultiExplorationEnv(MiniGridEnv):
                 self.agent_dir = [self._rand_int(0, 4) for i in range(self.agent_num)]  # assuming random start direction
         else:
             self.place_agent()
-        
+        '''
         if self._goal_default_pos is not None:
             goal = Goal()
             self.put_obj(goal, *self._goal_default_pos)
             goal.init_pos, goal.cur_pos = self._goal_default_pos
         else:
             self.place_obj(Goal())
-        
+        '''
         self.mission = 'Reach the goal'
 
     def reset(self):
@@ -165,7 +166,6 @@ class MultiExplorationEnv(MiniGridEnv):
         for i in range(self.agent_num):
             self.explored_all_map = np.logical_or(self.explored_all_map, self.explored_each_map[i])
             self.obstacle_all_map = np.logical_or(self.obstacle_all_map, self.obstacle_each_map[i])
-        import pdb; pdb.set_trace()
         return obs
 
     def step(self, action):
@@ -230,55 +230,156 @@ class MultiExplorationEnv(MiniGridEnv):
 
     def get_short_term_action(self,inputs):
         actions = []
-        agent_pos = self.agent_pos
-        agent_dir = self.agent_dir
+        temp_map = self.gt_map.astype(np.float32)
+        temp_map[temp_map == 2] = np.inf
         for i in range(self.agent_num):
-            goal = inputs[i]
-            relative_pos = np.array(goal) - np.array(agent_pos[i])
+            goal = [inputs[i][1], inputs[i][0]]
+            agent_pos = [self.agent_pos[i][1], self.agent_pos[i][0]]
+            agent_dir = self.agent_dir[i]
+            path = pyastar.astar_path(temp_map, agent_pos, goal, allow_diagonal=False)
+            if len(path) == 1:
+                actions.append(1)
+                continue
+            relative_pos = np.array(path[1]) - np.array(agent_pos)
             # first quadrant
-            if relative_pos[0] >= 0 and relative_pos[1] <= 0:
-                if current_orientation == 0 or current_orientation == 3:
+            if relative_pos[0] < 0 and relative_pos[1] > 0:
+                if agent_dir == 0 or agent_dir == 3:
                     actions.append(2)  # forward
                     continue
-                if  current_orientation == 1:
+                if  agent_dir == 1:
                     actions.append(0)  # turn left
                     continue
-                if  current_orientation == 2:
+                if  agent_dir == 2:
+                    actions.append(1)  # turn right
+                    continue
+            # second quadrant
+            if relative_pos[0] > 0 and relative_pos[1] > 0:
+                if agent_dir == 0 or agent_dir == 1:
+                    actions.append(2)  # forward
+                    continue
+                if  agent_dir == 2:
+                    actions.append(0)  # turn left
+                    continue
+                if  agent_dir == 3:
+                    actions.append(1)  # turn right
+                    continue
+            # third quadrant
+            if relative_pos[0] > 0 and relative_pos[1] < 0:
+                if agent_dir == 1 or agent_dir == 2:
+                    actions.append(2)  # forward
+                    continue
+                if  agent_dir == 3:
+                    actions.append(0)  # turn left
+                    continue
+                if  agent_dir == 0:
+                    actions.append(1)  # turn right
+                    continue
+            # fourth quadrant
+            if relative_pos[0] < 0 and relative_pos[1] < 0:
+                if agent_dir == 2 or agent_dir == 3:
+                    actions.append(2)  # forward
+                    continue
+                if  agent_dir == 0:
+                    actions.append(0)  # turn left
+                    continue
+                if  agent_dir == 1:
+                    actions.append(1)  # turn right
+                    continue
+            if relative_pos[0] == 0 and relative_pos[1] ==0:
+                # turn around
+                actions.append(1)
+                continue
+            if relative_pos[0] == 0 and relative_pos[1] > 0:
+                if agent_dir == 0:
+                    actions.append(2)
+                    continue
+                if agent_dir == 1:
+                    actions.append(0)
+                    continue
+                else:
+                    actions.append(1)
+                    continue
+            if relative_pos[0] == 0 and relative_pos[1] < 0:
+                if agent_dir == 2:
+                    actions.append(2)
+                    continue
+                if agent_dir == 1:
+                    actions.append(1)
+                    continue
+                else:
+                    actions.append(0)
+                    continue
+            if relative_pos[0] > 0 and relative_pos[1] == 0:
+                if agent_dir == 1:
+                    actions.append(2)
+                    continue
+                if agent_dir == 0:
+                    actions.append(1)
+                    continue
+                else:
+                    actions.append(0)
+                    continue
+            if relative_pos[0] < 0 and relative_pos[1] == 0:
+                if agent_dir == 3:
+                    actions.append(2)
+                    continue
+                if agent_dir == 0:
+                    actions.append(0)
+                    continue
+                else:
+                    actions.append(1)
+                    continue
+        '''
+        for i in range(self.agent_num):
+            goal = inputs[i]
+            agent_pos = self.agent_pos[i]
+            agent_dir = self.agent_dir[i]
+            relative_pos = np.array(goal) - np.array(agent_pos)
+            # first quadrant
+            if relative_pos[0] >= 0 and relative_pos[1] <= 0:
+                if agent_dir == 0 or agent_dir == 3:
+                    actions.append(2)  # forward
+                    continue
+                if  agent_dir == 1:
+                    actions.append(0)  # turn left
+                    continue
+                if  agent_dir == 2:
                     actions.append(1)  # turn right
                     continue
             # second quadrant
             if relative_pos[0] >= 0 and relative_pos[1] >= 0:
-                if current_orientation == 0 or current_orientation == 1:
+                if agent_dir == 0 or agent_dir == 1:
                     actions.append(2)  # forward
                     continue
-                if  current_orientation == 2:
+                if  agent_dir == 2:
                     actions.append(0)  # turn left
                     continue
-                if  current_orientation == 3:
+                if  agent_dir == 3:
                     actions.append(1)  # turn right
                     continue
             # third quadrant
             if relative_pos[0] <= 0 and relative_pos[1] >= 0:
-                if current_orientation == 1 or current_orientation == 2:
+                if agent_dir == 1 or agent_dir == 2:
                     actions.append(2)  # forward
                     continue
-                if  current_orientation == 3:
+                if  agent_dir == 3:
                     actions.append(0)  # turn left
                     continue
-                if  current_orientation == 0:
+                if  agent_dir == 0:
                     actions.append(1)  # turn right
                     continue
             # fourth quadrant
             if relative_pos[0] <= 0 and relative_pos[1] <= 0:
-                if current_orientation == 2 or current_orientation == 3:
+                if agent_dir == 2 or agent_dir == 3:
                     actions.append(2)  # forward
                     continue
-                if  current_orientation == 0:
+                if  agent_dir == 0:
                     actions.append(0)  # turn left
                     continue
-                if  current_orientation == 1:
+                if  agent_dir == 1:
                     actions.append(1)  # turn right
                     continue
+        '''
         return actions
             
 

@@ -10,18 +10,23 @@ from gym_minigrid.window import Window
 
 def redraw(img):
     if not args.agent_view:
-        img = env.render('rgb_array', tile_size=args.tile_size)
-
+        img = env.render_multi_agent('rgb_array', tile_size=args.tile_size)
     window.show_img(img)
+    window_explored.show_img(env.explored_all_map[7:-7,7:-7].astype(np.uint8))
+    window_obstacle.show_img(env.obstacle_all_map[7:-7,7:-7].astype(np.uint8))
+    time.sleep(2)
 
 def reset():
     if args.seed != -1:
         env.seed(args.seed)
 
     obs = env.reset()
-    obs, reward, done, info = env.step([0,1])
-    env.render_multi_agent()
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
+    #env.render_multi_agent()
+    #import pdb; pdb.set_trace()
+    #obs, reward, done, info = env.step([0,1])
+    #env.render_multi_agent()
+    #import pdb; pdb.set_trace()
     #import pdb; pdb.set_trace()
     if hasattr(env, 'mission'):
         print('Mission: %s' % env.mission)
@@ -108,16 +113,21 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-env = gym.make(args.env, agent_pos=[(2,1),(4,4)])
+env = gym.make(args.env, agent_pos=[(1,1),(17,1)])
 
 if args.agent_view:
     env = RGBImgPartialObsWrapper(env)
     env = ImgObsWrapper(env)
 
 window = Window('gym_minigrid - ' + args.env)
-window.reg_key_handler(key_handler)
+window_explored = Window('explored_area')
+window_obstacle = Window('obstacle_area')
+#window.reg_key_handler(key_handler)
 
 reset()
 
+while(1):
+    actions = env.get_short_term_action([[1,17],[17,17]])
+    step(actions)
 # Blocking event loop
-window.show(block=True)
+# window.show(block=True)
